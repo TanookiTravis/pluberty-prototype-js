@@ -10,7 +10,7 @@
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas" width="500" height="600"></canvas>
+    <canvas id="gameCanvas" width="400" height="800"></canvas>
     <script>
         // Get canvas and context for rendering
         const canvas = document.getElementById('gameCanvas');
@@ -136,11 +136,11 @@
         // Initialize scoring pegs, slots, and walls for scoring section (y: 500-750)
         function initScoringGrid() {
             pegs = [];
-            const rows = 4;
+            const rows = 6;
             const cols = 8;
             // Create a fixed 4x8 grid of pegs (32 total) with 28px vertical spacing and ±5px horizontal offset
             for (let row = 0; row < rows; row++) {
-                const y = 440 + row * 28;
+                const y = 585 + row * 28;
                 for (let col = 0; col < cols; col++) {
                     const x = 40 + col * 80 + (row % 2 === 0 ? -20 : 20);
                     pegs.push({ x, y, radius: PEG_RADIUS });
@@ -291,7 +291,7 @@
             // Update coin badge animation (fade in/out)
             if (coinBadge) {
                 coinBadge.timer += deltaTime;
-                if (coinBadge.state === 'fadeIn' && coinBadge.timer < 0.5) {
+                if (coinBadge.state === 'fadeIn') {
                     coinBadge.alpha += 2 * deltaTime;
                     if (coinBadge.alpha >= 1) {
                         coinBadge.alpha = 1;
@@ -312,7 +312,7 @@
             // Update bullet badge animation (fade in/out)
             if (tripleBulletBadge) {
                 tripleBulletBadge.timer += deltaTime;
-                if (tripleBulletBadge.state === 'fadeIn' && tripleBulletBadge.timer < 0.5) {
+                if (tripleBulletBadge.state === 'fadeIn') {
                     tripleBulletBadge.alpha += 2 * deltaTime;
                     if (tripleBulletBadge.alpha >= 1) {
                         tripleBulletBadge.alpha = 1;
@@ -433,7 +433,7 @@
                             text: `+${slot.points}`,
                             timer: SCORE_POPUP_DURATION,
                             alpha: 1,
-                            fontSize: 16
+                            fontSize: 22
                         });
                         gameState = 'scoring';
                     }
@@ -467,7 +467,7 @@
                             text: `+${COIN_POINTS}`,
                             timer: SCORE_POPUP_DURATION,
                             alpha: 1,
-                            fontSize: 16
+                            fontSize: 22
                         });
                         return false;
                     }
@@ -495,7 +495,7 @@
                     if (distance < ball.radius + COIN_RADIUS && gameState === 'playing') {
                         coinBoostActive = true;
                         coinBoostTimer = COIN_BOOST_DURATION;
-                        coinBadge = { x: 312.5, y: 40, timer: 0, state: 'fadeIn', alpha: 0 };
+                        coinBadge = { x: 330, y: 30, timer: 0, state: 'fadeIn', alpha: 0 };
                         console.log('Coin badge: created');
                         return false;
                     }
@@ -512,7 +512,7 @@
                         tripleBulletTimer = TRIPLE_BULLET_DURATION;
                         bulletCount = Math.min(bulletCount + BULLET_RELOAD, MAX_BULLETS);
                         hasTrianglePower = true;
-                        tripleBulletBadge = { x: 425, y: 40, timer: 0, state: 'fadeIn', alpha: 0 };
+                        tripleBulletBadge = { x: 330, y: 80, timer: 0, state: 'fadeIn', alpha: 0 };
                         console.log('Bullet badge: created');
                         return false;
                     }
@@ -538,7 +538,7 @@
                                 text: `+${points}`,
                                 timer: SCORE_POPUP_DURATION,
                                 alpha: 1,
-                                fontSize: points === 500 ? 32 : 16
+                                fontSize: points === 500 ? 32 : 22
                             });
                             scorePopups.push({
                                 x: 200,
@@ -546,7 +546,7 @@
                                 text: `+${points}`,
                                 timer: SCORE_POPUP_DURATION,
                                 alpha: 1,
-                                fontSize: points === 500 ? 32 : 16
+                                fontSize: points === 500 ? 32 : 22
                             });
                             if (points === 5) {
                                 console.log('Obstacle hit for +5 at', gameTime);
@@ -642,8 +642,8 @@
                 pegs = pegs.filter(peg => peg.x + PEG_RADIUS > -125);
                 const rightmostPegX = Math.max(...pegs.map(peg => peg.x), 0);
                 if (rightmostPegX < canvas.width + 80) {
-                    for (let row = 0; row < 4; row++) {
-                        const y = 440 + row * 28;
+                    for (let row = 0; row < 6; row++) {
+                        const y = 585 + row * 28;
                         const x = rightmostPegX + 80 + (row % 2 === 0 ? -28 : 28);
                         pegs.push({ x, y, radius: PEG_RADIUS });
                     }
@@ -797,7 +797,9 @@
                 ctx.textBaseline = 'middle';
                 ctx.fillText('Pluberty', canvas.width / 2, canvas.height / 2 - 20);
                 ctx.font = '20px Arial';
-                ctx.fillText('Your balls are about to drop. Hit SPACEBAR to start.', canvas.width / 2, canvas.height / 2 + 20);
+                ctx.fillText('Your balls are about to drop.', canvas.width / 2, canvas.height / 2 + 20);
+                ctx.font = '20px Arial';
+                ctx.fillText('Tap (or spacebar) to start.', canvas.width / 2, canvas.height / 2 + 55);
                 return;
             }
 
@@ -948,7 +950,7 @@
                 ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
             });
 
-            // Draw coin badge (scaled down 25%)
+            // Draw coin badge
             if (coinBadge) {
                 ctx.globalAlpha = coinBadge.alpha;
                 ctx.fillStyle = '#FFD700';
@@ -956,7 +958,7 @@
                 ctx.lineWidth = 2;
                 for (let i = 0; i < 3; i++) {
                     ctx.beginPath();
-                    ctx.arc(coinBadge.x - 25 + 24 * i, coinBadge.y, 20, 0, Math.PI * 2);
+                    ctx.arc(coinBadge.x - 28 + 26 * i, coinBadge.y, 22, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.stroke();
                 }
@@ -968,7 +970,7 @@
                 ctx.globalAlpha = 1;
             }
 
-            // Draw triple bullet badge (scaled down 25%)
+            // Draw triple bullet badge
             if (tripleBulletBadge) {
                 ctx.globalAlpha = tripleBulletBadge.alpha;
                 ctx.fillStyle = 'green';
