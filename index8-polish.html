@@ -33,7 +33,6 @@
         let shotTriangles = [];
         let blueShotTriangles = [];
         let scorePopups = [];
-        let particles = [];
         let coinBadge = null;
         let tripleBulletBadge = null;
         let score = 0;
@@ -80,7 +79,7 @@
         const BULLET_RELOAD = 25;
         const HIGH_VALUE_CHANCE = 0.05;
         const HIGH_VALUE_MIN = 1000;
-        const HIGH_VALUE_MAX = 10000;
+        const HIGH_VALUE_MAX = 8000;
         const PARTICLE_DURATION = 1.0;
         const STUCK_THRESHOLD = 5;
         const STUCK_TIME_LIMIT = 0.5;
@@ -139,11 +138,11 @@
             pegs = [];
             const rows = 4;
             const cols = 8;
-            // Create a fixed 4x8 grid of pegs (32 total)
+            // Create a fixed 4x8 grid of pegs (32 total) with 28px vertical spacing and ±5px horizontal offset
             for (let row = 0; row < rows; row++) {
-                const y = 600 + row * 20;
+                const y = 575 + row * 28; // Shifted up by 12px to center in 500-700, 28px spacing
                 for (let col = 0; col < cols; col++) {
-                    const x = 40 + col * 80;
+                    const x = 40 + col * 80 + (row % 2 === 0 ? -20 : 20); // Alternate -5/+5 offset
                     pegs.push({ x, y, radius: PEG_RADIUS });
                 }
             }
@@ -173,7 +172,7 @@
             }
         }
 
-        // Reset game for next round (rounds 1-4)
+        // Reset game for next round (rounds 1-2)
         function resetGame() {
             // Reset ball position and state
             ball = { x: 100, y: 200, radius: 10, vy: 0, vx: 2, lastPegHit: null, stuckCounter: 0, lastCollisionTime: 0 };
@@ -186,7 +185,6 @@
             shotTriangles = [];
             blueShotTriangles = [];
             scorePopups = [];
-            particles = [];
             coinBadge = null;
             tripleBulletBadge = null;
             bulletCount = 0;
@@ -195,14 +193,14 @@
             coinBoostActive = false;
             slotCount = 0;
             // Increment round if not final
-            if (round < 5) {
+            if (round < 3) {
                 round += 1;
             }
             initObstacles();
             initPlinko();
         }
 
-        // Full reset after final round (round 5)
+        // Full reset after final round (round 3)
         function fullResetGame() {
             // Reset all game state
             ball = { x: 100, y: 200, radius: 10, vy: 0, vx: 2, lastPegHit: null, stuckCounter: 0, lastCollisionTime: 0 };
@@ -217,7 +215,6 @@
             shotTriangles = [];
             blueShotTriangles = [];
             scorePopups = [];
-            particles = [];
             coinBadge = null;
             tripleBulletBadge = null;
             bulletCount = 0;
@@ -260,11 +257,11 @@
                     }
                 }
             }
-            if (e.code === 'KeyR' && gameState === 'scoring' && round < 5) {
+            if (e.code === 'KeyR' && gameState === 'scoring' && round < 3) {
                 // Start next round
                 resetGame();
             }
-            if (e.code === 'KeyS' && gameState === 'scoring' && round === 5) {
+            if (e.code === 'KeyS' && gameState === 'scoring' && round === 3) {
                 // Restart game after final round
                 fullResetGame();
             }
@@ -291,35 +288,45 @@
                 }
             }
 
-            // Update coin badge animation
+            // Update coin badge animation (fade in/out)
             if (coinBadge) {
                 coinBadge.timer += deltaTime;
-                if (coinBadge.state === 'down' && coinBadge.timer < 0.5) {
-                    coinBadge.y += 300 * deltaTime;
-                    if (coinBadge.y >= 50) {
-                        coinBadge.y = 50;
+                if (coinBadge.state === 'fadeIn' && coinBadge.timer < 0.5) {
+                    coinBadge.alpha += 2 * deltaTime; // Fade in over 0.5s
+                    if (coinBadge.alpha >= 1) {
+                        coinBadge.alpha = 1;
                         coinBadge.state = 'stay';
-                        console.log('Coin badge: down -> stay');
+                        console.log('Coin badge: fadeIn -> stay');
                     }
                 } else if (coinBadge.state === 'stay' && coinBadge.timer >= BADGE_DURATION) {
-                    console.log('Coin badge: removed');
-                    coinBadge = null;
+                    coinBadge.state = 'fadeOut';
+                } else if (coinBadge.state === 'fadeOut' && coinBadge.timer < BADGE_DURATION + 0.5) {
+                    coinBadge.alpha -= 2 * deltaTime; // Fade out over 0.5s
+                    if (coinBadge.alpha <= 0) {
+                        console.log('Coin badge: removed');
+                        coinBadge = null;
+                    }
                 }
             }
 
-            // Update bullet badge animation
+            // Update bullet badge animation (fade in/out)
             if (tripleBulletBadge) {
                 tripleBulletBadge.timer += deltaTime;
-                if (tripleBulletBadge.state === 'down' && tripleBulletBadge.timer < 0.5) {
-                    tripleBulletBadge.y += 300 * deltaTime;
-                    if (tripleBulletBadge.y >= 50) {
-                        tripleBulletBadge.y = 50;
+                if (tripleBulletBadge.state === 'fadeIn' && tripleBulletBadge.timer < 0.5) {
+                    tripleBulletBadge.alpha += 2 * deltaTime; // Fade in over 0.5s
+                    if (tripleBulletBadge.alpha >= 1) {
+                        tripleBulletBadge.alpha = 1;
                         tripleBulletBadge.state = 'stay';
-                        console.log('Bullet badge: down -> stay');
+                        console.log('Bullet badge: fadeIn -> stay');
                     }
                 } else if (tripleBulletBadge.state === 'stay' && tripleBulletBadge.timer >= BADGE_DURATION) {
-                    console.log('Bullet badge: removed');
-                    tripleBulletBadge = null;
+                    tripleBulletBadge.state = 'fadeOut';
+                } else if (tripleBulletBadge.state === 'fadeOut' && tripleBulletBadge.timer < BADGE_DURATION + 0.5) {
+                    tripleBulletBadge.alpha -= 2 * deltaTime; // Fade out over 0.5s
+                    if (tripleBulletBadge.alpha <= 0) {
+                        console.log('Bullet badge: removed');
+                        tripleBulletBadge = null;
+                    }
                 }
             }
 
@@ -329,15 +336,6 @@
                 popup.timer -= deltaTime;
                 popup.alpha = popup.timer / SCORE_POPUP_DURATION;
                 return popup.timer > 0;
-            });
-
-            // Update particles (visual effects for coin collection)
-            particles = particles.filter(particle => {
-                particle.x += particle.vx * deltaTime;
-                particle.y += particle.vy * deltaTime;
-                particle.timer -= deltaTime;
-                particle.alpha = particle.timer / PARTICLE_DURATION;
-                return particle.timer > 0;
             });
 
             if (gameState === 'playing') {
@@ -369,7 +367,7 @@
                     }
                 });
 
-                // Scroll collectibles
+                // Scroll collectibles and game objects
                 coins.forEach(coin => { coin.x -= ball.vx; });
                 triangleClusters.forEach(cluster => { cluster.x -= ball.vx; });
                 coinClusters.forEach(cluster => { cluster.x -= ball.vx; });
@@ -497,7 +495,7 @@
                     if (distance < ball.radius + COIN_RADIUS && gameState === 'playing') {
                         coinBoostActive = true;
                         coinBoostTimer = COIN_BOOST_DURATION;
-                        coinBadge = { x: 500, y: -100, timer: 0, state: 'down' };
+                        coinBadge = { x: 500, y: 50, timer: 0, state: 'fadeIn', alpha: 0 };
                         console.log('Coin badge: created');
                         return false;
                     }
@@ -514,7 +512,7 @@
                         tripleBulletTimer = TRIPLE_BULLET_DURATION;
                         bulletCount = Math.min(bulletCount + BULLET_RELOAD, MAX_BULLETS);
                         hasTrianglePower = true;
-                        tripleBulletBadge = { x: canvas.width - 120, y: -100, timer: 0, state: 'down' };
+                        tripleBulletBadge = { x: canvas.width - 120, y: 50, timer: 0, state: 'fadeIn', alpha: 0 };
                         console.log('Bullet badge: created');
                         return false;
                     }
@@ -645,8 +643,9 @@
                 const rightmostPegX = Math.max(...pegs.map(peg => peg.x), 0);
                 if (rightmostPegX < canvas.width + 80) {
                     for (let row = 0; row < 4; row++) {
-                        const y = 600 + row * 20;
-                        pegs.push({ x: rightmostPegX + 80, y, radius: PEG_RADIUS });
+                        const y = 575 + row * 28; // 28px vertical spacing
+                        const x = rightmostPegX + 80 + (row % 2 === 0 ? -28 : 28); // Alternate -5/+5 offset
+                        pegs.push({ x, y, radius: PEG_RADIUS });
                     }
                 }
 
@@ -949,48 +948,44 @@
                 ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
             });
 
-            // Draw particles
-            particles.forEach(particle => {
-                ctx.beginPath();
-                ctx.arc(particle.x, particle.y, 2, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(255, 215, 0, ${particle.alpha})`;
-                ctx.fill();
-            });
-
-            // Draw coin badge
+            // Draw coin badge (scaled down 25%)
             if (coinBadge) {
+                ctx.globalAlpha = coinBadge.alpha;
                 ctx.fillStyle = '#FFD700';
                 ctx.strokeStyle = '#DAA520';
                 ctx.lineWidth = 2;
                 for (let i = 0; i < 3; i++) {
                     ctx.beginPath();
-                    ctx.arc(coinBadge.x - 75 + 45 * i, coinBadge.y, 30, 0, Math.PI * 2);
+                    ctx.arc(coinBadge.x - 56.25 + 33.75 * i, coinBadge.y, 22.5, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.stroke();
                 }
                 ctx.fillStyle = 'black';
-                ctx.font = '16px Arial';
+                ctx.font = '12px Arial';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText('COIN BANANZA!', coinBadge.x, coinBadge.y);
+                ctx.globalAlpha = 1;
             }
 
-            // Draw triple bullet badge
+            // Draw triple bullet badge (scaled down 25%)
             if (tripleBulletBadge) {
+                ctx.globalAlpha = tripleBulletBadge.alpha;
                 ctx.fillStyle = 'green';
                 for (let i = 0; i < 3; i++) {
                     ctx.beginPath();
-                    ctx.moveTo(tripleBulletBadge.x - 67.5 + 52.5 * i, tripleBulletBadge.y - 22.5);
-                    ctx.lineTo(tripleBulletBadge.x - 67.5 + 52.5 * i + 45, tripleBulletBadge.y);
-                    ctx.lineTo(tripleBulletBadge.x - 67.5 + 52.5 * i, tripleBulletBadge.y + 22.5);
+                    ctx.moveTo(tripleBulletBadge.x - 50.625 + 39.375 * i, tripleBulletBadge.y - 16.875);
+                    ctx.lineTo(tripleBulletBadge.x - 50.625 + 39.375 * i + 33.75, tripleBulletBadge.y);
+                    ctx.lineTo(tripleBulletBadge.x - 50.625 + 39.375 * i, tripleBulletBadge.y + 16.875);
                     ctx.closePath();
                     ctx.fill();
                 }
                 ctx.fillStyle = 'black';
-                ctx.font = '16px Arial';
+                ctx.font = '12px Arial';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText('BULLET BANANZA!', tripleBulletBadge.x, tripleBulletBadge.y);
+                ctx.globalAlpha = 1;
             }
 
             // Draw HUD (round, score, bullet bar)
@@ -998,7 +993,7 @@
             ctx.font = '20px Arial';
             ctx.textAlign = 'left';
             ctx.textBaseline = 'alphabetic';
-            ctx.fillText(`Round: ${round}/5, Score: ${totalScore}`, 10, 30);
+            ctx.fillText(`Round: ${round}/3, Score: ${totalScore}`, 10, 30);
             if (bulletCount > 0) {
                 ctx.fillStyle = 'green';
                 ctx.fillRect(10, 50, (bulletCount / MAX_BULLETS) * 100, 10);
@@ -1021,9 +1016,9 @@
                 ctx.font = '40px Arial';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(round < 5 ? `Score added: ${score}` : `Total Score: ${totalScore}`, canvas.width / 2, canvas.height / 2 - 20);
+                ctx.fillText(round < 3 ? `Score added: ${score}` : `Total Score: ${totalScore}`, canvas.width / 2, canvas.height / 2 - 20);
                 ctx.font = '20px Arial';
-                ctx.fillText(round < 5 ? 'Press R to start the next round' : 'Hit S to start over', canvas.width / 2, canvas.height / 2 + 20);
+                ctx.fillText(round < 3 ? 'Press R to start the next round' : 'Hit S to start over', canvas.width / 2, canvas.height / 2 + 20);
             }
         }
 
