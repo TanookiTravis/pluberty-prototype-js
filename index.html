@@ -91,7 +91,7 @@
         const COIN_BOOST_MULTIPLIER = 25;
         const TRIPLE_BULLET_DURATION = 5;
         const SHOOTING_OBSTACLE_CHANCE = 0.025;
-        const SHOOTING_INTERVAL = 2.35;
+        const SHOOTING_INTERVAL = 2.5;
         const BADGE_DURATION = 3.0;
 
         // Initialize obstacles, coins, and clusters for top section (y: 0-500)
@@ -273,7 +273,7 @@
             if (gameState === 'start') {
                 gameState = 'playing';
                 initObstacles();
-                initPlinko();
+                initScoringGrid();
             } else if (gameState === 'playing') {
                 ball.vy = JUMP;
                 if (hasTrianglePower && bulletCount > 0) {
@@ -381,7 +381,7 @@
                 // Scroll obstacles and check for collisions
                 obstacles.forEach(obstacle => {
                     obstacle.x -= ball.vx;
-                    if (obstacle.isShooting) {
+                    if (obstacle.isShooting && obstacle.x > ball.x + 50) {
                         obstacle.shootTimer -= deltaTime;
                         if (obstacle.shootTimer <= 0) {
                             // Fire blue triangle at ball
