@@ -10,7 +10,7 @@
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas" width="800" height="750"></canvas>
+    <canvas id="gameCanvas" width="500" height="600"></canvas>
     <script>
         // Get canvas and context for rendering
         const canvas = document.getElementById('gameCanvas');
@@ -140,7 +140,7 @@
             const cols = 8;
             // Create a fixed 4x8 grid of pegs (32 total) with 28px vertical spacing and ±5px horizontal offset
             for (let row = 0; row < rows; row++) {
-                const y = 575 + row * 28; // Shifted up by 12px to center in 500-700, 28px spacing
+                const y = 440 + row * 28;
                 for (let col = 0; col < cols; col++) {
                     const x = 40 + col * 80 + (row % 2 === 0 ? -20 : 20);
                     pegs.push({ x, y, radius: PEG_RADIUS });
@@ -148,11 +148,11 @@
             }
             slots = [];
             walls = [];
-            // Create 10 initial slots with progressive or high-value points
-            for (let i = 0; i < 10; i++) {
+            // Create 6 initial slots with progressive or high-value points
+            for (let i = 0; i < 6; i++) {
                 slotCount++;
                 const isHighValue = Math.random() < HIGH_VALUE_CHANCE;
-                let points = isHighValue ? Math.round((Math.random() * (HIGH_VALUE_MAX - HIGH_VALUE_MIN) + HIGH_VALUE_MIN) / 100) * 100 : (slotCount < 20 ? 5 : 5 * (slotCount - 19));
+                let points = isHighValue ? Math.round((Math.random() * (HIGH_VALUE_MAX - HIGH_VALUE_MIN) + HIGH_VALUE_MIN) / 100) * 100 : (slotCount < 10 ? 5 : 5 * (slotCount - 9));
                 slots.push({
                     x: i * SLOT_WIDTH,
                     y: canvas.height - SLOT_HEIGHT,
@@ -292,7 +292,7 @@
             if (coinBadge) {
                 coinBadge.timer += deltaTime;
                 if (coinBadge.state === 'fadeIn' && coinBadge.timer < 0.5) {
-                    coinBadge.alpha += 2 * deltaTime; // Fade in over 0.5s
+                    coinBadge.alpha += 2 * deltaTime;
                     if (coinBadge.alpha >= 1) {
                         coinBadge.alpha = 1;
                         coinBadge.state = 'stay';
@@ -301,7 +301,7 @@
                 } else if (coinBadge.state === 'stay' && coinBadge.timer >= BADGE_DURATION) {
                     coinBadge.state = 'fadeOut';
                 } else if (coinBadge.state === 'fadeOut' && coinBadge.timer < BADGE_DURATION + 0.5) {
-                    coinBadge.alpha -= 2 * deltaTime; // Fade out over 0.5s
+                    coinBadge.alpha -= 2 * deltaTime;
                     if (coinBadge.alpha <= 0) {
                         console.log('Coin badge: removed');
                         coinBadge = null;
@@ -313,7 +313,7 @@
             if (tripleBulletBadge) {
                 tripleBulletBadge.timer += deltaTime;
                 if (tripleBulletBadge.state === 'fadeIn' && tripleBulletBadge.timer < 0.5) {
-                    tripleBulletBadge.alpha += 2 * deltaTime; // Fade in over 0.5s
+                    tripleBulletBadge.alpha += 2 * deltaTime;
                     if (tripleBulletBadge.alpha >= 1) {
                         tripleBulletBadge.alpha = 1;
                         tripleBulletBadge.state = 'stay';
@@ -322,7 +322,7 @@
                 } else if (tripleBulletBadge.state === 'stay' && tripleBulletBadge.timer >= BADGE_DURATION) {
                     tripleBulletBadge.state = 'fadeOut';
                 } else if (tripleBulletBadge.state === 'fadeOut' && tripleBulletBadge.timer < BADGE_DURATION + 0.5) {
-                    tripleBulletBadge.alpha -= 2 * deltaTime; // Fade out over 0.5s
+                    tripleBulletBadge.alpha -= 2 * deltaTime;
                     if (tripleBulletBadge.alpha <= 0) {
                         console.log('Bullet badge: removed');
                         tripleBulletBadge = null;
@@ -495,7 +495,7 @@
                     if (distance < ball.radius + COIN_RADIUS && gameState === 'playing') {
                         coinBoostActive = true;
                         coinBoostTimer = COIN_BOOST_DURATION;
-                        coinBadge = { x: 500, y: 50, timer: 0, state: 'fadeIn', alpha: 0 };
+                        coinBadge = { x: 312.5, y: 40, timer: 0, state: 'fadeIn', alpha: 0 };
                         console.log('Coin badge: created');
                         return false;
                     }
@@ -512,7 +512,7 @@
                         tripleBulletTimer = TRIPLE_BULLET_DURATION;
                         bulletCount = Math.min(bulletCount + BULLET_RELOAD, MAX_BULLETS);
                         hasTrianglePower = true;
-                        tripleBulletBadge = { x: canvas.width - 120, y: 50, timer: 0, state: 'fadeIn', alpha: 0 };
+                        tripleBulletBadge = { x: 425, y: 40, timer: 0, state: 'fadeIn', alpha: 0 };
                         console.log('Bullet badge: created');
                         return false;
                     }
@@ -639,11 +639,11 @@
                 }
 
                 // Spawn new pegs to ensure continuous scoring board
-                pegs = pegs.filter(peg => peg.x + PEG_RADIUS > -200);
+                pegs = pegs.filter(peg => peg.x + PEG_RADIUS > -125);
                 const rightmostPegX = Math.max(...pegs.map(peg => peg.x), 0);
                 if (rightmostPegX < canvas.width + 80) {
                     for (let row = 0; row < 4; row++) {
-                        const y = 575 + row * 28; // 28px vertical spacing
+                        const y = 440 + row * 28;
                         const x = rightmostPegX + 80 + (row % 2 === 0 ? -28 : 28);
                         pegs.push({ x, y, radius: PEG_RADIUS });
                     }
@@ -656,7 +656,7 @@
                 if (rightmostSlotX < canvas.width) {
                     slotCount++;
                     const isHighValue = Math.random() < HIGH_VALUE_CHANCE;
-                    let newPoints = isHighValue ? Math.round((Math.random() * (HIGH_VALUE_MAX - HIGH_VALUE_MIN) + HIGH_VALUE_MIN) / 100) * 100 : (slotCount < 20 ? 5 : 5 * (slotCount - 19));
+                    let newPoints = isHighValue ? Math.round((Math.random() * (HIGH_VALUE_MAX - HIGH_VALUE_MIN) + HIGH_VALUE_MIN) / 100) * 100 : (slotCount < 10 ? 5 : 5 * (slotCount - 9));
                     slots.push({
                         x: rightmostSlotX + SLOT_WIDTH,
                         y: canvas.height - SLOT_HEIGHT,
@@ -744,8 +744,8 @@
                         score += slot.points;
                         totalScore += slot.points;
                         scorePopups.push({
-                            x: 200,
-                            y: 50,
+                            x: 125,
+                            y: 40,
                             text: `+${slot.points}`,
                             timer: SCORE_POPUP_DURATION,
                             alpha: 1,
@@ -956,12 +956,12 @@
                 ctx.lineWidth = 2;
                 for (let i = 0; i < 3; i++) {
                     ctx.beginPath();
-                    ctx.arc(coinBadge.x - 56.25 + 33.75 * i, coinBadge.y, 22.5, 0, Math.PI * 2);
+                    ctx.arc(coinBadge.x - 25 + 24 * i, coinBadge.y, 20, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.stroke();
                 }
                 ctx.fillStyle = 'black';
-                ctx.font = '12px Arial';
+                ctx.font = '10px Arial';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText('COIN BANANZA!', coinBadge.x, coinBadge.y);
@@ -974,14 +974,14 @@
                 ctx.fillStyle = 'green';
                 for (let i = 0; i < 3; i++) {
                     ctx.beginPath();
-                    ctx.moveTo(tripleBulletBadge.x - 50.625 + 39.375 * i, tripleBulletBadge.y - 16.875);
-                    ctx.lineTo(tripleBulletBadge.x - 50.625 + 39.375 * i + 33.75, tripleBulletBadge.y);
-                    ctx.lineTo(tripleBulletBadge.x - 50.625 + 39.375 * i, tripleBulletBadge.y + 16.875);
+                    ctx.moveTo(tripleBulletBadge.x - 47 + 32 * i, tripleBulletBadge.y - 22);
+                    ctx.lineTo(tripleBulletBadge.x - 47 + 32 * i + 42, tripleBulletBadge.y);
+                    ctx.lineTo(tripleBulletBadge.x - 47 + 32 * i, tripleBulletBadge.y + 22);
                     ctx.closePath();
                     ctx.fill();
                 }
-                ctx.fillStyle = 'black';
-                ctx.font = '12px Arial';
+                ctx.fillStyle = 'white';
+                ctx.font = '10px Arial';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText('BULLET BANANZA!', tripleBulletBadge.x, tripleBulletBadge.y);
