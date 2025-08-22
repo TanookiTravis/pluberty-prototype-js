@@ -267,6 +267,35 @@
             }
         });
 
+        // Handle touch input for mobile users
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (gameState === 'start') {
+                gameState = 'playing';
+                initObstacles();
+                initPlinko();
+            } else if (gameState === 'playing') {
+                ball.vy = JUMP;
+                if (hasTrianglePower && bulletCount > 0) {
+                    if (tripleBulletActive) {
+                        shotTriangles.push(
+                            { x: ball.x + ball.radius, y: ball.y - 10, vx: 5 },
+                            { x: ball.x + ball.radius, y: ball.y, vx: 5 },
+                            { x: ball.x + ball.radius, y: ball.y + 10, vx: 5 }
+                        );
+                    } else {
+                        shotTriangles.push({
+                            x: ball.x + ball.radius,
+                            y: ball.y,
+                            vx: 5
+                        });
+                    }
+                    bulletCount -= 1;
+                    hasTrianglePower = bulletCount > 0;
+                }
+            }
+        });
+
         // Update game state (physics, collisions, spawning)
         function update(deltaTime) {
             if (gameState === 'start') {
