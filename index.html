@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flappy Plinko Game</title>
+    <title>Pluberty Protoype</title>
     <style>
         body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f0f0f0; }
         canvas { border: 1px solid black; }
@@ -94,7 +94,7 @@
         const SHOOTING_INTERVAL = 3;
         const BADGE_DURATION = 3.0;
 
-        // Initialize obstacles, coins, and clusters for Flappy Bird section (y: 0-500)
+        // Initialize obstacles, coins, and clusters for top section (y: 0-500)
         function initObstacles() {
             obstacles = [];
             coins = [];
@@ -133,8 +133,8 @@
             }
         }
 
-        // Initialize Plinko pegs, slots, and walls for Plinko section (y: 500-750)
-        function initPlinko() {
+        // Initialize scoring pegs, slots, and walls for scoring section (y: 500-750)
+        function initScoringGrid() {
             pegs = [];
             const rows = 4;
             const cols = 8;
@@ -197,7 +197,7 @@
                 round += 1;
             }
             initObstacles();
-            initPlinko();
+            initScoringGrid();
         }
 
         // Full reset after final round (round 3)
@@ -223,7 +223,7 @@
             coinBoostActive = false;
             slotCount = 0;
             initObstacles();
-            initPlinko();
+            initScoringGrid();
         }
 
         // Handle keyboard input for game controls
@@ -233,9 +233,9 @@
                     // Start game from start screen
                     gameState = 'playing';
                     initObstacles();
-                    initPlinko();
+                    initScoringGrid();
                 } else if (gameState === 'playing') {
-                    // Apply jump in Flappy Bird section
+                    // Apply jump in top section
                     ball.vy = JUMP;
                     if (hasTrianglePower && bulletCount > 0) {
                         // Fire bullets if powered up
@@ -339,7 +339,7 @@
             });
 
             if (gameState === 'playing') {
-                // Update ball physics for Flappy Bird section
+                // Update ball physics for top section
                 ball.y += ball.vy;
                 ball.vy += GRAVITY * deltaTime * 60;
 
@@ -638,7 +638,7 @@
                     });
                 }
 
-                // Spawn new pegs to ensure continuous Plinko board
+                // Spawn new pegs to ensure continuous scoring board
                 pegs = pegs.filter(peg => peg.x + PEG_RADIUS > -200);
                 const rightmostPegX = Math.max(...pegs.map(peg => peg.x), 0);
                 if (rightmostPegX < canvas.width + 80) {
@@ -677,7 +677,7 @@
                 // Prevent ball from going above canvas
                 if (ball.y - ball.radius < 0) ball.y = ball.radius;
             } else if (gameState === 'falling') {
-                // Update ball physics for Plinko section
+                // Update ball physics for scoring section
                 ball.y += ball.vy;
                 ball.x += ball.vx;
                 ball.vy += GRAVITY * deltaTime * 60;
