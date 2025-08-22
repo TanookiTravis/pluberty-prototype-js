@@ -142,7 +142,7 @@
             for (let row = 0; row < rows; row++) {
                 const y = 575 + row * 28; // Shifted up by 12px to center in 500-700, 28px spacing
                 for (let col = 0; col < cols; col++) {
-                    const x = 40 + col * 80 + (row % 2 === 0 ? -20 : 20); // Alternate -5/+5 offset
+                    const x = 40 + col * 80 + (row % 2 === 0 ? -20 : 20);
                     pegs.push({ x, y, radius: PEG_RADIUS });
                 }
             }
@@ -644,7 +644,7 @@
                 if (rightmostPegX < canvas.width + 80) {
                     for (let row = 0; row < 4; row++) {
                         const y = 575 + row * 28; // 28px vertical spacing
-                        const x = rightmostPegX + 80 + (row % 2 === 0 ? -28 : 28); // Alternate -5/+5 offset
+                        const x = rightmostPegX + 80 + (row % 2 === 0 ? -28 : 28);
                         pegs.push({ x, y, radius: PEG_RADIUS });
                     }
                 }
