@@ -293,6 +293,12 @@
                     bulletCount -= 1;
                     hasTrianglePower = bulletCount > 0;
                 }
+            } else if (gameState === 'scoring') {
+                if (round < 3) {
+                    resetGame();
+                } else {
+                    fullResetGame();
+                }
             }
         });
 
@@ -1049,7 +1055,7 @@
                 ctx.textBaseline = 'middle';
                 ctx.fillText(round < 3 ? `Score added: ${score}` : `Total Score: ${totalScore}`, canvas.width / 2, canvas.height / 2 - 20);
                 ctx.font = '20px Arial';
-                ctx.fillText(round < 3 ? 'Press R to start the next round' : 'Hit S to start over', canvas.width / 2, canvas.height / 2 + 20);
+                ctx.fillText(round < 3 ? 'Tap (or press R) to start the next round' : 'Tap (or press S) to start over', canvas.width / 2, canvas.height / 2 + 20);
             }
         }
 
