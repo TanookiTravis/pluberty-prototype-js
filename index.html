@@ -210,7 +210,7 @@
                 rows = 6;
                 for (let row = 0; row < rows; row++) {
                     const y = PEG_SECTION_TOP + row * colAdjust;
-                    const x = rightmostPegX + xAdjust + (row % 2 === 0 ? -colAdjust : colAdjust);
+                    const x = xAdjust + (row % 2 === 0 ? -colAdjust : colAdjust);
                     pegs.push({ x, y, radius: PEG_RADIUS });
                 }
             } else {
