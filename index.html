@@ -6,7 +6,7 @@
     <title>Pluberty Protoype</title>
     <style>
         body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f0f0f0; }
-        canvas { border: 1px solid black; }
+        canvas { border: 1px solid black; touch-action: none; }
     </style>
 </head>
 <body>
@@ -39,7 +39,7 @@
         let totalScore = 0;
         let round = 1;
         let bulletCount = 0;
-        let gameState = 'start';
+        let gameState = 'menu';
         let lastTime = performance.now();
         let obstacleRadiusIncrement = 10;
         let hasTrianglePower = false;
@@ -49,6 +49,10 @@
         let tripleBulletActive = false;
         let tripleBulletTimer = 0;
         let slotCount = 0;
+        let selectedRandomizer = null;
+        let randomizerOptions = [];
+        let mouseX = 0;
+        let mouseY = 0;
 
         // Game constants
         // Physics: gravity, jump strength, collision parameters
@@ -59,6 +63,7 @@
         const GRAVITY = 0.3;
         const JUMP = -4;
         const PEG_RADIUS = 5;
+        const PEG_SECTION_TOP = 585;
         const SLOT_WIDTH = 85;
         const SLOT_HEIGHT = 50;
         const WALL_WIDTH = 5;
@@ -94,19 +99,81 @@
         const SHOOTING_INTERVAL = 2.35;
         const BADGE_DURATION = 3.0;
 
-        // Initialize obstacles, coins, and clusters for top section (y: 0-500)
+        // Randomizer definitions
+        const RANDOMIZERS = [
+            {
+                name: "Fewer Pegs",
+                description: "Half the pegs, evenly distributed.",
+                apply: () => {
+                    // Applied in initScoringGrid
+                },
+                modifyConstants: () => ({})
+            },
+            {
+                name: "2x Bullets",
+                description: "Double bullets on upgrades.",
+                apply: () => {
+                    // hasTrianglePower = bulletCount > 0;
+                },
+                modifyConstants: () => ({
+                    BULLET_RELOAD: 100,
+                    MAX_BULLETS: 200
+                })
+            },
+            {
+                name: "Small Obstacles",
+                description: "Obstacles max at size 30.",
+                apply: () => {},
+                modifyConstants: () => ({ OBSTACLE_MAX_RADIUS: 30 })
+            },
+            {
+                name: "No Shooting Obstacles",
+                description: "No obstacles shoot bullets.",
+                apply: () => {},
+                modifyConstants: () => ({ SHOOTING_OBSTACLE_CHANCE: 0 })
+            },
+            {
+                name: "More Upgrades",
+                description: "Upgrades spawn more frequently.",
+                apply: () => {},
+                modifyConstants: () => ({
+                    TRIANGLE_SPAWN_CHANCE: TRIANGLE_SPAWN_CHANCE * 1.5,
+                    COIN_CLUSTER_SPAWN_CHANCE: COIN_CLUSTER_SPAWN_CHANCE * 1.5,
+                    TRIPLE_BULLET_SPAWN_CHANCE: TRIPLE_BULLET_SPAWN_CHANCE * 1.5
+                })
+            }
+        ];
+
+        // Initialize randomizer menu
+        function initRandomizerMenu() {
+            const shuffled = [...RANDOMIZERS].sort(() => Math.random() - 0.5);
+            randomizerOptions = shuffled.slice(0, 3).map((randomizer, index) => ({
+                ...randomizer,
+                x: 50,
+                y: 300 + index * 150,
+                width: 300,
+                height: 100
+            }));
+        }
+
+        // Initialize obstacles for top section
         function initObstacles() {
             obstacles = [];
             coins = [];
             triangleClusters = [];
             coinClusters = [];
             tripleBulletClusters = [];
-            // Create 8 initial obstacles with increasing spacing
+            const effectiveMaxRadius = selectedRandomizer && selectedRandomizer.name === "Small Obstacles" ? 30 : OBSTACLE_MAX_RADIUS;
+            const effectiveShootingChance = selectedRandomizer && selectedRandomizer.name === "No Shooting Obstacles" ? 0 : SHOOTING_OBSTACLE_CHANCE;
+            const effectiveTriangleSpawnChance = selectedRandomizer && selectedRandomizer.name === "More Upgrades" ? TRIANGLE_SPAWN_CHANCE * 1.5 : TRIANGLE_SPAWN_CHANCE;
+            const effectiveCoinClusterSpawnChance = selectedRandomizer && selectedRandomizer.name === "More Upgrades" ? COIN_CLUSTER_SPAWN_CHANCE * 1.5 : COIN_CLUSTER_SPAWN_CHANCE;
+            const effectiveTripleBulletSpawnChance = selectedRandomizer && selectedRandomizer.name === "More Upgrades" ? TRIPLE_BULLET_SPAWN_CHANCE * 1.5 : TRIPLE_BULLET_SPAWN_CHANCE;
+            
             for (let i = 0; i < 8; i++) {
-                const isShooting = Math.random() < SHOOTING_OBSTACLE_CHANCE * (1 + gameTime / 30 * 9);
+                const isShooting = Math.random() < effectiveShootingChance * (1 + gameTime / 30 * 9);
                 obstacles.push({
-                    x: 400 + i * (OBSTACLE_SPACING + 2 * OBSTACLE_MAX_RADIUS + 10),
-                    y: Math.random() * (canvas.height * 2 / 3 - OBSTACLE_MAX_RADIUS * 2) + OBSTACLE_MAX_RADIUS,
+                    x: 400 + i * (OBSTACLE_SPACING + 2 * effectiveMaxRadius + 10),
+                    y: Math.random() * (canvas.height * 2 / 3 - effectiveMaxRadius * 2) + effectiveMaxRadius,
                     radius: OBSTACLE_MIN_RADIUS,
                     isShooting: isShooting,
                     shootTimer: isShooting ? Math.random() * SHOOTING_INTERVAL : 0
@@ -133,17 +200,30 @@
             }
         }
 
-        // Initialize scoring pegs, slots, and walls for scoring section (y: 500-750)
+        // Initialize scoring pegs, slots, and walls for scoring section
         function initScoringGrid() {
-            pegs = [];
-            const rows = 6;
-            const cols = 8;
-            // Create a fixed 4x8 grid of pegs (32 total) with 28px vertical spacing and ±5px horizontal offset
-            for (let row = 0; row < rows; row++) {
-                const y = 585 + row * 28;
-                for (let col = 0; col < cols; col++) {
-                    const x = 40 + col * 80 + (row % 2 === 0 ? -20 : 20);
+            if (selectedRandomizer && selectedRandomizer.name === "Fewer Pegs") {
+                
+                pegs = [];
+                colAdjust = selectedRandomizer && selectedRandomizer.name === "Fewer Pegs" ? 34 : 28;
+                xAdjust = selectedRandomizer && selectedRandomizer.name === "Fewer Pegs" ? 100 : 80;
+                rows = 6;
+                for (let row = 0; row < rows; row++) {
+                    const y = PEG_SECTION_TOP + row * colAdjust;
+                    const x = rightmostPegX + xAdjust + (row % 2 === 0 ? -colAdjust : colAdjust);
                     pegs.push({ x, y, radius: PEG_RADIUS });
+                }
+            } else {
+                pegs = [];
+                const rows = 6;
+                const cols = 8;
+                // Create a fixed 4x8 grid of pegs
+                for (let row = 0; row < rows; row++) {
+                    const y = PEG_SECTION_TOP + row * 28;
+                    for (let col = 0; col < cols; col++) {
+                        const x = 40 + col * 80 + (row % 2 === 0 ? -20 : 20);
+                        pegs.push({ x, y, radius: PEG_RADIUS });
+                    }
                 }
             }
             slots = [];
@@ -172,7 +252,7 @@
             }
         }
 
-        // Reset game for next round (rounds 1-2)
+        // Reset game for next round
         function resetGame() {
             // Reset ball position and state
             ball = { x: 100, y: 200, radius: 10, vy: 0, vx: 2, lastPegHit: null, stuckCounter: 0, lastCollisionTime: 0 };
@@ -198,6 +278,10 @@
             }
             initObstacles();
             initScoringGrid();
+            // // TRAVIS
+            // if (selectedRandomizer && selectedRandomizer.name === "2x Bullets") {
+            //     hasTrianglePower = bulletCount > 0;
+            // }
         }
 
         // Full reset after final round (round 3)
@@ -207,7 +291,7 @@
             score = 0;
             totalScore = 0;
             round = 1;
-            gameState = 'playing';
+            gameState = 'menu';
             obstacleRadiusIncrement = 10;
             hasTrianglePower = false;
             tripleBulletActive = false;
@@ -222,47 +306,38 @@
             coinBoostTimer = 0;
             coinBoostActive = false;
             slotCount = 0;
-            initObstacles();
-            initScoringGrid();
+            selectedRandomizer = null;
+            initRandomizerMenu();
         }
 
-        // Handle keyboard input for game controls
+        // Handle keyboard input
         document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space') {
-                if (gameState === 'start') {
-                    // Start game from start screen
-                    gameState = 'playing';
-                    initObstacles();
-                    initScoringGrid();
-                } else if (gameState === 'playing') {
-                    // Apply jump in top section
-                    ball.vy = JUMP;
-                    if (hasTrianglePower && bulletCount > 0) {
-                        // Fire bullets if powered up
-                        if (tripleBulletActive) {
-                            shotTriangles.push(
-                                { x: ball.x + ball.radius, y: ball.y - 10, vx: 5 },
-                                { x: ball.x + ball.radius, y: ball.y, vx: 5 },
-                                { x: ball.x + ball.radius, y: ball.y + 10, vx: 5 }
-                            );
-                        } else {
-                            shotTriangles.push({
-                                x: ball.x + ball.radius,
-                                y: ball.y,
-                                vx: 5
-                            });
-                        }
+            if (e.code === 'Space' && gameState === 'playing') {
+                // Apply jump in top section
+                ball.vy = JUMP;
+                if (hasTrianglePower && bulletCount > 0) {
+                    // Fire bullets if powered up
+                    if (tripleBulletActive) {
+                        shotTriangles.push(
+                            { x: ball.x + ball.radius, y: ball.y - 10, vx: 5 },
+                            { x: ball.x + ball.radius, y: ball.y, vx: 5 },
+                            { x: ball.x + ball.radius, y: ball.y + 10, vx: 5 }
+                        );
+                        // bulletCount -= 1;
+                    } else {
+                        shotTriangles.push({
+                            x: ball.x + ball.radius,
+                            y: ball.y,
+                            vx: 5
+                        });
                         bulletCount -= 1;
-                        hasTrianglePower = bulletCount > 0;
                     }
                 }
             }
             if (e.code === 'KeyR' && gameState === 'scoring' && round < 3) {
-                // Start next round
                 resetGame();
             }
             if (e.code === 'KeyS' && gameState === 'scoring' && round === 3) {
-                // Restart game after final round
                 fullResetGame();
             }
         });
@@ -270,10 +345,21 @@
         // Handle touch input for mobile users
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            if (gameState === 'start') {
-                gameState = 'playing';
-                initObstacles();
-                initScoringGrid();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const touchX = touch.clientX - rect.left;
+            const touchY = touch.clientY - rect.top;
+            if (gameState === 'menu') {
+                randomizerOptions.forEach(option => {
+                    if (touchX >= option.x && touchX <= option.x + option.width &&
+                        touchY >= option.y && touchY <= option.y + option.height) {
+                        selectedRandomizer = option;
+                        selectedRandomizer.apply();
+                        gameState = 'playing';
+                        initObstacles();
+                        initScoringGrid();
+                    }
+                });
             } else if (gameState === 'playing') {
                 ball.vy = JUMP;
                 if (hasTrianglePower && bulletCount > 0) {
@@ -283,15 +369,15 @@
                             { x: ball.x + ball.radius, y: ball.y, vx: 5 },
                             { x: ball.x + ball.radius, y: ball.y + 10, vx: 5 }
                         );
+                        // bulletCount -= 1;
                     } else {
                         shotTriangles.push({
                             x: ball.x + ball.radius,
                             y: ball.y,
                             vx: 5
                         });
+                        bulletCount -= 1;
                     }
-                    bulletCount -= 1;
-                    hasTrianglePower = bulletCount > 0;
                 }
             } else if (gameState === 'scoring') {
                 if (round < 3) {
@@ -304,7 +390,7 @@
 
         // Update game state (physics, collisions, spawning)
         function update(deltaTime) {
-            if (gameState === 'start') {
+            if (gameState === 'menu') {
                 return;
             }
 
@@ -331,14 +417,12 @@
                     if (coinBadge.alpha >= 1) {
                         coinBadge.alpha = 1;
                         coinBadge.state = 'stay';
-                        console.log('Coin badge: fadeIn -> stay');
                     }
                 } else if (coinBadge.state === 'stay' && coinBadge.timer >= BADGE_DURATION) {
                     coinBadge.state = 'fadeOut';
-                } else if (coinBadge.state === 'fadeOut' && coinBadge.timer < BADGE_DURATION + 0.5) {
+                } else if (coinBadge.state === 'fadeOut') {
                     coinBadge.alpha -= 2 * deltaTime;
                     if (coinBadge.alpha <= 0) {
-                        console.log('Coin badge: removed');
                         coinBadge = null;
                     }
                 }
@@ -352,14 +436,12 @@
                     if (tripleBulletBadge.alpha >= 1) {
                         tripleBulletBadge.alpha = 1;
                         tripleBulletBadge.state = 'stay';
-                        console.log('Bullet badge: fadeIn -> stay');
                     }
                 } else if (tripleBulletBadge.state === 'stay' && tripleBulletBadge.timer >= BADGE_DURATION) {
                     tripleBulletBadge.state = 'fadeOut';
-                } else if (tripleBulletBadge.state === 'fadeOut' && tripleBulletBadge.timer < BADGE_DURATION + 0.5) {
+                } else if (tripleBulletBadge.state === 'fadeOut') {
                     tripleBulletBadge.alpha -= 2 * deltaTime;
                     if (tripleBulletBadge.alpha <= 0) {
-                        console.log('Bullet badge: removed');
                         tripleBulletBadge = null;
                     }
                 }
@@ -374,7 +456,13 @@
             });
 
             if (gameState === 'playing') {
-                // Update ball physics for top section
+                const effectiveMaxRadius = selectedRandomizer && selectedRandomizer.name === "Small Obstacles" ? 30 : OBSTACLE_MAX_RADIUS;
+                const effectiveShootingChance = selectedRandomizer && selectedRandomizer.name === "No Shooting Obstacles" ? 0 : SHOOTING_OBSTACLE_CHANCE;
+                const effectiveTriangleSpawnChance = selectedRandomizer && selectedRandomizer.name === "More Upgrades" ? TRIANGLE_SPAWN_CHANCE * 1.5 : TRIANGLE_SPAWN_CHANCE;
+                const effectiveCoinClusterSpawnChance = selectedRandomizer && selectedRandomizer.name === "More Upgrades" ? COIN_CLUSTER_SPAWN_CHANCE * 1.5 : COIN_CLUSTER_SPAWN_CHANCE;
+                const effectiveTripleBulletSpawnChance = selectedRandomizer && selectedRandomizer.name === "More Upgrades" ? TRIPLE_BULLET_SPAWN_CHANCE * 1.5 : TRIPLE_BULLET_SPAWN_CHANCE;
+                const effectiveCoinSpawnChance = coinBoostActive ? COIN_SPAWN_CHANCE * COIN_BOOST_MULTIPLIER : COIN_SPAWN_CHANCE;
+
                 ball.y += ball.vy;
                 ball.vy += GRAVITY * deltaTime * 60;
 
@@ -397,7 +485,6 @@
                                 angle: angle + Math.PI
                             });
                             obstacle.shootTimer = SHOOTING_INTERVAL;
-                            console.log('Shooting obstacle fired at', gameTime);
                         }
                     }
                 });
@@ -451,7 +538,7 @@
                         // Apply bounce physics with random horizontal nudge
                         const speed = Math.max(Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy) * BOUNCE_FACTOR, MIN_BOUNCE_SPEED);
                         const horizontalFactor = Math.abs(Math.cos(angle)) * HORIZONTAL_BOOST;
-                        ball.vx = -Math.cos(angle) * speed * horizontalFactor + (Math.random() - 0.5) * BOUNCE_HORIZONTAL_NUDGE
+                        ball.vx = -Math.cos(angle) * speed * horizontalFactor + (Math.random() - 0.5) * BOUNCE_HORIZONTAL_NUDGE;
                         ball.vy = -Math.abs(ball.vy) * BOUNCE_FACTOR - MIN_BOUNCE_SPEED * 0.5 + (Math.random() - 0.5) * 0.3;
                     }
                 });
@@ -515,7 +602,7 @@
                     const dy = ball.y - cluster.y;
                     const distance = Math.sqrt(dx * dx + dy * dy);
                     if (distance < ball.radius + TRIANGLE_RADIUS && gameState === 'playing') {
-                        bulletCount = Math.min(bulletCount + BULLET_RELOAD, MAX_BULLETS);
+                        bulletCount = selectedRandomizer && selectedRandomizer.name === "2x Bullets" ? Math.min((bulletCount + BULLET_RELOAD) * 2, MAX_BULLETS) : Math.min(bulletCount + BULLET_RELOAD, MAX_BULLETS);
                         hasTrianglePower = true;
                         return false;
                     }
@@ -531,7 +618,6 @@
                         coinBoostActive = true;
                         coinBoostTimer = COIN_BOOST_DURATION;
                         coinBadge = { x: 330, y: 30, timer: 0, state: 'fadeIn', alpha: 0 };
-                        console.log('Coin badge: created');
                         return false;
                     }
                     return true;
@@ -545,10 +631,9 @@
                     if (distance < ball.radius + TRIANGLE_RADIUS && gameState === 'playing') {
                         tripleBulletActive = true;
                         tripleBulletTimer = TRIPLE_BULLET_DURATION;
-                        bulletCount = Math.min(bulletCount + BULLET_RELOAD, MAX_BULLETS);
+                        bulletCount = selectedRandomizer && selectedRandomizer.name === "2x Bullets" ? Math.min((bulletCount + BULLET_RELOAD) * 2, MAX_BULLETS) : Math.min(bulletCount + BULLET_RELOAD, MAX_BULLETS);
                         hasTrianglePower = true;
                         tripleBulletBadge = { x: 330, y: 80, timer: 0, state: 'fadeIn', alpha: 0 };
-                        console.log('Bullet badge: created');
                         return false;
                     }
                     return true;
@@ -596,34 +681,34 @@
                 // Spawn new obstacles and collectibles
                 if (obstacles.length > 0 && obstacles[0].x < -obstacles[0].radius * 2) {
                     obstacles.shift();
-                    obstacleRadiusIncrement = Math.min(obstacleRadiusIncrement + (Math.random() * 3 + 2), OBSTACLE_MAX_RADIUS);
-                    const isShooting = Math.random() < SHOOTING_OBSTACLE_CHANCE * (1 + gameTime / 30 * 9);
+                    obstacleRadiusIncrement = Math.min(obstacleRadiusIncrement + (Math.random() * 3 + 2), effectiveMaxRadius);
+                    const isShooting = Math.random() < effectiveShootingChance * (1 + gameTime / 30 * 9);
                     obstacles.push({
                         x: canvas.width + obstacleRadiusIncrement,
-                        y: Math.random() * (canvas.height * 2 / 3 - obstacleRadiusIncrement * 2) + OBSTACLE_MAX_RADIUS,
+                        y: Math.random() * (canvas.height * 2 / 3 - obstacleRadiusIncrement * 2) + effectiveMaxRadius,
                         radius: obstacleRadiusIncrement,
                         isShooting: isShooting,
                         shootTimer: isShooting ? Math.random() * SHOOTING_INTERVAL : 0
                     });
-                    if (Math.random() < COIN_SPAWN_CHANCE) {
+                    if (Math.random() < effectiveCoinSpawnChance) {
                         coins.push({
                             x: canvas.width + COIN_RADIUS,
                             y: Math.random() * (canvas.height * 2 / 3 - COIN_RADIUS * 2) + COIN_RADIUS
                         });
                     }
-                    if (Math.random() < TRIANGLE_SPAWN_CHANCE) {
+                    if (Math.random() < effectiveTriangleSpawnChance) {
                         triangleClusters.push({
                             x: canvas.width + TRIANGLE_RADIUS,
                             y: Math.random() * (canvas.height * 2 / 3 - TRIANGLE_RADIUS * 2) + TRIANGLE_RADIUS
                         });
                     }
-                    if (Math.random() < COIN_CLUSTER_SPAWN_CHANCE) {
+                    if (Math.random() < effectiveCoinClusterSpawnChance) {
                         coinClusters.push({
                             x: canvas.width + COIN_RADIUS,
                             y: Math.random() * (canvas.height * 2 / 3 - COIN_RADIUS * 2) + COIN_RADIUS
                         });
                     }
-                    if (Math.random() < TRIPLE_BULLET_SPAWN_CHANCE) {
+                    if (Math.random() < effectiveTripleBulletSpawnChance) {
                         tripleBulletClusters.push({
                             x: canvas.width + TRIANGLE_RADIUS,
                             y: Math.random() * (canvas.height * 2 / 3 - TRIANGLE_RADIUS * 2) + TRIANGLE_RADIUS
@@ -633,10 +718,10 @@
 
                 // Spawn additional obstacles between 10-30 seconds
                 if (gameTime > 10 && gameTime <= 30 && gameTime % 2 < deltaTime) {
-                    const isShooting = Math.random() < SHOOTING_OBSTACLE_CHANCE * (1 + gameTime / 30 * 9);
+                    const isShooting = Math.random() < effectiveShootingChance * (1 + gameTime / 30 * 9);
                     obstacles.push({
                         x: canvas.width + obstacleRadiusIncrement,
-                        y: Math.random() * (canvas.height * 2 / 3 - obstacleRadiusIncrement * 2) + OBSTACLE_MAX_RADIUS,
+                        y: Math.random() * (canvas.height * 2 / 3 - obstacleRadiusIncrement * 2) + effectiveMaxRadius,
                         radius: obstacleRadiusIncrement,
                         isShooting: isShooting,
                         shootTimer: isShooting ? Math.random() * SHOOTING_INTERVAL : 0
@@ -644,26 +729,25 @@
                 }
 
                 // Spawn collectibles based on coin boost
-                const effectiveCoinSpawnChance = coinBoostActive ? COIN_SPAWN_CHANCE * COIN_BOOST_MULTIPLIER : COIN_SPAWN_CHANCE;
                 if (Math.random() < effectiveCoinSpawnChance) {
                     coins.push({
                         x: canvas.width + COIN_RADIUS,
                         y: Math.random() * (canvas.height * 2 / 3 - COIN_RADIUS * 2) + COIN_RADIUS
                     });
                 }
-                if (Math.random() < TRIANGLE_SPAWN_CHANCE) {
+                if (Math.random() < effectiveTriangleSpawnChance) {
                     triangleClusters.push({
                         x: canvas.width + TRIANGLE_RADIUS,
                         y: Math.random() * (canvas.height * 2 / 3 - TRIANGLE_RADIUS * 2) + TRIANGLE_RADIUS
                     });
                 }
-                if (Math.random() < COIN_CLUSTER_SPAWN_CHANCE) {
+                if (Math.random() < effectiveCoinClusterSpawnChance) {
                     coinClusters.push({
                         x: canvas.width + COIN_RADIUS,
                         y: Math.random() * (canvas.height * 2 / 3 - COIN_RADIUS * 2) + COIN_RADIUS
                     });
                 }
-                if (Math.random() < TRIPLE_BULLET_SPAWN_CHANCE) {
+                if (Math.random() < effectiveTripleBulletSpawnChance) {
                     tripleBulletClusters.push({
                         x: canvas.width + TRIANGLE_RADIUS,
                         y: Math.random() * (canvas.height * 2 / 3 - TRIANGLE_RADIUS * 2) + TRIANGLE_RADIUS
@@ -674,9 +758,12 @@
                 pegs = pegs.filter(peg => peg.x + PEG_RADIUS > -125);
                 const rightmostPegX = Math.max(...pegs.map(peg => peg.x), 0);
                 if (rightmostPegX < canvas.width + 80) {
-                    for (let row = 0; row < 6; row++) {
-                        const y = 585 + row * 28;
-                        const x = rightmostPegX + 80 + (row % 2 === 0 ? -28 : 28);
+                    colAdjust = selectedRandomizer && selectedRandomizer.name === "Fewer Pegs" ? 34 : 28;
+                    xAdjust = selectedRandomizer && selectedRandomizer.name === "Fewer Pegs" ? 100 : 80;
+                    rows = 6;
+                    for (let row = 0; row < rows; row++) {
+                        const y = PEG_SECTION_TOP + row * colAdjust;
+                        const x = rightmostPegX + xAdjust + (row % 2 === 0 ? -colAdjust : colAdjust);
                         pegs.push({ x, y, radius: PEG_RADIUS });
                     }
                 }
@@ -822,16 +909,34 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             // Draw start screen
-            if (gameState === 'start') {
-                ctx.fillStyle = 'black';
-                ctx.font = '40px Arial';
+            if (gameState === 'menu') {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'white';
+                ctx.font = '36px Arial';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText('Pluberty', canvas.width / 2, canvas.height / 2 - 20);
+                ctx.fillText('Choose a Randomizer', canvas.width / 2, 200);
+                randomizerOptions.forEach(option => {
+                    const isHovered = mouseX >= option.x && mouseX <= option.x + option.width &&
+                                     mouseY >= option.y && mouseY <= option.y + option.height;
+                    ctx.fillStyle = isHovered ? '#d3d3d3' : 'white';
+                    ctx.strokeStyle = isHovered ? 'red' : 'black';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.rect(option.x, option.y, option.width, option.height);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.fillStyle = 'black';
+                    ctx.font = 'bold 20px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(option.name, option.x + option.width / 2, option.y + 30);
+                    ctx.font = '16px Arial';
+                    ctx.fillText(option.description, option.x + option.width / 2, option.y + 70);
+                });
                 ctx.font = '20px Arial';
-                ctx.fillText('Your balls are about to drop.', canvas.width / 2, canvas.height / 2 + 20);
-                ctx.font = '20px Arial';
-                ctx.fillText('Tap (or spacebar) to start.', canvas.width / 2, canvas.height / 2 + 55);
+                ctx.fillText('Tap to select', canvas.width / 2, 750);
                 return;
             }
 
@@ -1028,6 +1133,10 @@
             ctx.textAlign = 'left';
             ctx.textBaseline = 'alphabetic';
             ctx.fillText(`Round: ${round}/3, Score: ${totalScore}`, 10, 30);
+            if (selectedRandomizer) {
+                ctx.font = '16px Arial';
+                ctx.fillText(`Randomizer: ${selectedRandomizer.name}`, 10, 70);
+            }
             if (bulletCount > 0) {
                 ctx.fillStyle = 'green';
                 ctx.fillRect(10, 50, (bulletCount / MAX_BULLETS) * 100, 10);
@@ -1055,6 +1164,9 @@
                 ctx.fillText(round < 3 ? 'Tap (or press R) to start the next round' : 'Tap (or press S) to start over', canvas.width / 2, canvas.height / 2 + 20);
             }
         }
+
+        // Initialize menu on load
+        initRandomizerMenu();
 
         // Main game loop
         function gameLoop(time) {
